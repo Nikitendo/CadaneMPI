@@ -9,9 +9,9 @@ module Task
             integer(4), intent(out) :: x1, y1, x2, y2
             integer(4) :: n, L, R, Up, Down, m, tmp
             real(8), allocatable :: current_column(:), B(:,:)
-            real(8) :: current_sum, max_sum, local_max_sum_rank(2), global_max_sum_and_rank(2)
+            real(8) :: current_sum, max_sum, global_max_sum
             logical :: transpos
-            integer :: ierr, proc_count, rank
+            integer :: ierr, proc_count, rank, maxS_rank
 
             call MPI_Comm_rank (MPI_COMM_WORLD, rank, ierr) !номер процесса
             call MPI_Comm_size (MPI_COMM_WORLD, proc_count, ierr) !число процессов
@@ -47,8 +47,8 @@ module Task
 
                     call FindMaxInArray (current_column, current_sum, Up, Down)
 
-                    if (current_sum > local_max_sum_rank(1)) then
-                         local_max_sum_rank(1) = current_sum
+                    if (current_sum > global_max_sum) then
+                         global_max_sum = current_sum
                          x1 = Up
                          x2 = Down
                          y1 = L
@@ -57,18 +57,19 @@ module Task
                 end do
             end do
             
-            local_max_sum_rank(2) = rank
-            !local_max_sum_rank= макс локальная сумма, номер процесса 
-            !вычисление глобального максимума и номера процесса, содержащего это значение в global_max_sum_and_rank
-            call MPI_Reduce(local_max_sum_rank, global_max_sum_and_rank(:), 1, MPI_2DOUBLE_PRECISION, MPI_MAXLOC, 0, MPI_COMM_WORLD, ierr)
-	    !отпр всем номер процесса с макс суммой
-            call MPI_Bcast(global_max_sum_and_rank(2), 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+            !global_max_sum= макс локальная сумма, номер процесса 
+            !вычисление глобального максимума и номера процесса, содержащего это значение в max_sum 
+            call MPI_Reduce(global_max_sum, max_sum, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+            if (max_sum == global_max_sum) then 
+                !отпр всем номер процесса с макс суммой
+                call MPI_Bcast(rank, 1, MPI_INTEGER4, 0, MPI_COMM_WORLD, ierr)
+            end if
+            
             !отпр коорд из процесса с макс суммой 
-            maxS_rank=int(global_max_sum_and_rank(2))
-            call MPI_Bcast(x1, 1, MPI_INTEGER4, maxS_rank, MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(x2, 1, MPI_INTEGER4, maxS_rank, MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(y1, 1, MPI_INTEGER4, maxS_rank, MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(y2, 1, MPI_INTEGER4, maxS_rank, MPI_COMM_WORLD, ierr)
+            call MPI_Bcast(x1, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
+            call MPI_Bcast(x2, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
+            call MPI_Bcast(y1, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
+            call MPI_Bcast(y2, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
 
             if (transpos) then  
                 tmp = x1
