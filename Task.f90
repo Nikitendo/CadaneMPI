@@ -40,7 +40,7 @@ module Task
 
             do L = 1 + rank, n, proc_count
                 current_column = B(:, L)  
-                do R=L, n
+                do R=L, size(current_column)
                     if (R > L) then 
                         current_column = current_column + B(:, R)
                     endif
@@ -57,13 +57,13 @@ module Task
                 end do
             end do
             
-            !вычисление глобального максимума и номера процесса, содержащего это значение в max_sum 
-            call MPI_Reduce(local_max_sum, max_sum, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+            !вычисление глобального максимума и номера процесса, содержащего это значение (в max_sum)
+            call MPI_allReduce(local_max_sum, max_sum, 1, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr)
             maxs_rank=-1
             if (max_sum == local_max_sum) then 
-                call MPI_Comm_rank (MPI_COMM_WORLD, maxs_rank, ierr) !номер процесса с макс суммой
+               maxs_rank = rank
             end if
-            call MPI_Reduce(rank, maxs_rank, 1, MPI_INTEGER4, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+            call MPI_allReduce(maxs_rank, rank, 1, MPI_INTEGER4, MPI_MAX, MPI_COMM_WORLD, ierr)
             call MPI_Bcast(x1, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
             call MPI_Bcast(x2, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
             call MPI_Bcast(y1, 1, MPI_INTEGER4, rank, MPI_COMM_WORLD, ierr)
