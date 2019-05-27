@@ -11,7 +11,7 @@ module Task
             real(8), allocatable :: current_column(:), B(:,:)
             real(8) :: current_sum, max_sum, local_max_sum
             logical :: transpos
-            integer :: ierr, proc_count, rank, maxS_rank
+            integer(4) :: ierr, proc_count, rank, maxS_rank
 
             call MPI_Comm_rank (MPI_COMM_WORLD, rank, ierr) !номер процесса
             call MPI_Comm_size (MPI_COMM_WORLD, proc_count, ierr) !число процессов
@@ -31,13 +31,13 @@ module Task
                 allocate(B(m, n))
                 B = A     
             endif
-
+            
             max_sum = B(1, 1)
             x1 = 1
             y1 = 1
             x2 = 1
             y2 = 1
-
+            local_max_sum = 0
             do L = 1 + rank, n, proc_count
                 current_column = B(:, L)  
                 do R=L, size(current_column)
@@ -47,7 +47,7 @@ module Task
 
                     call FindMaxInArray (current_column, current_sum, Up, Down)
 
-                    if (current_sum > local_max_sum) then
+                    if (current_sum > local_max_sum .or. R == 1+rank) then
                          local_max_sum = current_sum
                          x1 = Up
                          x2 = Down
@@ -58,8 +58,8 @@ module Task
             end do
             
             !вычисление глобального максимума и номера процесса, содержащего это значение (в max_sum)
-            call MPI_allReduce(local_max_sum, max_sum, 1, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr)
-            maxs_rank=-1
+            call MPI_allReduce(local_max_sum, max_sum, 1, MPI_REAL8, MPI_MAX, MPI_COMM_WORLD, ierr)
+            maxs_rank = -1
             if (max_sum == local_max_sum) then 
                maxs_rank = rank
             end if
@@ -108,7 +108,6 @@ module Task
                     cur_sum = 0
                     minus_pos = i
                 endif
-
             enddo
         end subroutine FindMaxInArray
 
