@@ -40,8 +40,8 @@ module Task
             local_max_sum = 0
             do L = 1 + rank, n, proc_count
                 current_column = B(:, L)  
-                do R=L, size(current_column)
-                    if (R > L) then 
+                do R=L, n
+                    if (R > L) then
                         current_column = current_column + B(:, R)
                     endif
 
